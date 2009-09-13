@@ -18,6 +18,20 @@ style blogentrycomments
 style blogcontent
 style blogtitle
 
+
+	 structure A = Crud.Make(struct
+                   val tab = blog
+                             
+                   val title = "Blog Administration"
+                   val cols = {Title = Crud.string "Title",
+                               BlogBody = Crud.string "BlogBody",
+                               BlogCreated = Crud.time "BlogCreated",
+                               Public = Crud.bool "Public",
+			       Author = Crud.int "Author"}
+               end)
+
+val admin = A.main
+
 fun page t f d () =
 	contents <- f d;
 	return <xml>
@@ -32,9 +46,6 @@ fun page t f d () =
 		</div>
 		</body>
 		</xml>
-
-
-
 fun entry k =
 return <xml>
 <div class={blogentry}>
@@ -46,7 +57,5 @@ return <xml>
 </div>
 </div>
 </xml>
-
-
 val main = page "foo" entry "Test Title"
 
