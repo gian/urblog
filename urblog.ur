@@ -1,3 +1,14 @@
+table user : { Id : int, Username : string, Password : string, DisplayName : string }
+	PRIMARY KEY Id
+
+table blog : { Id : int, Title : string, Body : string, Created : time, Public : bool, Author : int}
+	PRIMARY KEY Id,
+  	CONSTRAINT Author FOREIGN KEY Author REFERENCES user(Id)
+
+table comment : { Id : int, Parent : int, Body : string, Created : time, AuthorName : string, Key : string }
+	PRIMARY KEY Id,
+	CONSTRAINT Parent FOREIGN KEY Parent REFERENCES blog(Id)
+
 style blogentry
 style blogentrytitle
 style blogentrydetail
