@@ -2,5 +2,5 @@ allow url http://www.expdev.net/urblog/urblog.css
 database dbname=urblog
 sql urblog.sql
 
-crud
+editor
 urblog

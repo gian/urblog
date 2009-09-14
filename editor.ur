@@ -171,15 +171,13 @@ functor Make(M : sig
             </body></xml>
         end    
 
-    and main () =
+    and editor () =
         ls <- list ();
-        return <xml><head>
-          <title>{cdata M.title}</title>
-        </head><body>
-
-          <h1>{cdata M.title}</h1>
-
+        return <xml><body>
+	 <div>
+          <h2>{cdata M.title}</h2>
           {ls}
-        </body></xml>
+	</div></body>
+        </xml>
 
 end

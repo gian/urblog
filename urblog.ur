@@ -1,7 +1,7 @@
 table user : { Id : int, Username : string, Password : string, DisplayName : string }
 	PRIMARY KEY Id
 
-table blog : { Id : int, Title : string, BlogBody : string, BlogCreated : time, Public : bool, Author : int}
+table blog : { Id : int, Title : string, Body : string, Created : time, Public : bool, Author : int}
 	PRIMARY KEY Id,
   	CONSTRAINT Author FOREIGN KEY Author REFERENCES user(Id)
 
@@ -19,43 +19,47 @@ style blogcontent
 style blogtitle
 
 
-	 structure A = Crud.Make(struct
-                   val tab = blog
-                             
-                   val title = "Blog Administration"
-                   val cols = {Title = Crud.string "Title",
-                               BlogBody = Crud.string "BlogBody",
-                               BlogCreated = Crud.time "BlogCreated",
-                               Public = Crud.bool "Public",
-			       Author = Crud.int "Author"}
-               end)
+open Editor.Make(struct
+	val tab = blog
+                          
+	val title = "Blog Administration"
+	
+	val cols = {Title = Editor.string "Title",
+                    Body = Editor.string "Body",
+                    Created = Editor.time "Created",
+                    Public = Editor.bool "Public",
+		    Author = Editor.int "Author"}
+        end)
 
-val admin = A.main
+val admin = editor
 
-fun page t f d () =
-	contents <- f d;
-	return <xml>
-		<head>
-		<title>{[t]}</title>
-		<link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
-		</head>
-		<body>
-		<div class={blogcontent}>
-		<div class={blogtitle}><h1>{[t]}</h1></div>
-		{contents}
-		</div>
-		</body>
-		</xml>
-fun entry k =
-return <xml>
-<div class={blogentry}>
-<div class={blogentrytitle}><h2>Test Blog Entry {[k]}</h2></div>
-<div class={blogentrybody}><p>This is a test</p></div>
-<div class={blogentrydetail}>
-<div class={blogentryauthor}>Posted by Gian at 14:21 on 14/09/2009</div>
-<div class={blogentrycomments}>0 Comments</div>
-</div>
-</div>
-</xml>
-val main = page "foo" entry "Test Title"
+fun listing () =
+	rows <- queryX (SELECT * FROM blog AS Blog ORDER BY blog.Id DESC)
+            (fn row =>
+		<xml>
+ 	       	<div class={blogentry}>
+       	 	<div class={blogentrytitle}><h2>{[row.Blog.Title]}</h2></div>
+        	<div class={blogentrybody}><p>{[row.Blog.Body]}</p></div>
+        	<div class={blogentrydetail}>
+        	<div class={blogentryauthor}>Posted by row.User.DisplayName at {[row.Blog.Created]}</div>
+        	<div class={blogentrycomments}>0 Comments</div>
+        	</div>
+        	</div>
+        	</xml>);
+        return
+		<xml>
+                <head>
+                <title>Some Blog Title</title>
+                <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
+                </head>
+                <body>
+                <div class={blogcontent}>
+                <div class={blogtitle}><h1>Some Blog Title</h1></div>
+                {rows}
+                </div>
+                </body>
+                </xml> 
+
+
+val main = listing
 

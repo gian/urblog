@@ -22,8 +22,9 @@ functor Make(M : sig
                  table tab : ([Id = int] ++ map fst cols)
 
                  val title : string
-
+		
                  val cols : colsMeta cols
              end) : sig
-    val main : unit -> transaction page
+    val editor : unit -> transaction page
+
 end
