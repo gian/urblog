@@ -45,7 +45,7 @@ body {
 	background-color: #ABCDEF;
 	padding: 4px;
 	margin: -4px;
-	height: 12px;
+	height: 14px;
 	font-size: 11px;
 	color: grey;
 }
@@ -58,3 +58,14 @@ body {
 	float: left;
 }
 
+.Urblog_commentform {
+
+}
+
+.Urblog_commentbutton {
+	color:black; 
+	font: bold 9px arial,helvetica,clean,sans-serif;	
+	background-color:white; 
+	border:1px solid; 
+	border-color: #696 #363 #363 #696; 
+} 
