@@ -61,21 +61,17 @@ and handler r =
          	     VALUES ({[id]}, {[readError r.Parent]}, {[r.AuthorName]}, {[r.CommentBody]}, CURRENT_TIMESTAMP, ""));
 		(detail (readError r.Parent))
 
-and mkCommentForm id =
+and mkCommentForm id s =
 	<xml><form><hidden{#Parent} value={show id}/>
                     <p>Your Name:<br/></p><textbox{#AuthorName}/><br/>
                     <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/><br/>
-                    <submit value="Add Comment" action={handler}/></form></xml>
+                    <submit value="Add Comment" action={handler}/>
+		    <button value="Cancel" onclick={set s 0}/></form></xml>
 
-(*		
-		fun htmf s = 
-		(case String.split s #"\n" of 
-			  None => s :: Nil
-		     	| Some (h,t) => h :: htmf t)
-
-	in
-		<xml>Hello</xml>
-	end *)
+and nl2list s =
+  case String.split s #"\n" of
+    None => s :: Nil
+  | Some (h,t) => h :: nl2list t
 
 and bentry row =
 	count <- counter row.Blog.Id;
@@ -83,14 +79,14 @@ and bentry row =
 	return <xml>
                 <div class={blogentry}>
                 <div class={blogentrytitle}><h2><a link={detail row.Blog.Id}>{[row.Blog.Title]}</a></h2></div>
-                <div class={blogentrybody}><p>{[row.Blog.Body]}</p></div>
+                <div class={blogentrybody}><p>{List.mapX (fn x => <xml><p>{[x]}</p></xml>) (nl2list row.Blog.Body)}</p></div>
                 <div class={blogentrydetail}>
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
                 <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/></div>
                 </div>
                 <div class={commentform}>
                         <dyn signal={v <- signal commentForm;
-                         if v > 0 then return (mkCommentForm v) else return <xml/>}/></div>
+                         if v > 0 then return (mkCommentForm v commentForm) else return <xml/>}/></div>
                 </div>
                 </xml>
 and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
