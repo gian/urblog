@@ -38,6 +38,7 @@ val admin = editor
 fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
 		return r.N
 
+ 
 val btitle = "Test Blog Title"
 
 fun page t c =
@@ -57,7 +58,7 @@ fun page t c =
 and handler r = 
 	    id <- nextval commentS;
     		dml (INSERT INTO comment (Id, Parent, AuthorName, CommentBody, CommentCreated, Key)
-         	     VALUES ({[id]}, {[readError r.Parent]}, {[r.AuthorName]}, {[r.CommentBody]}, {[readError "10/10/10 10:10:10"]}, ""));
+         	     VALUES ({[id]}, {[readError r.Parent]}, {[r.AuthorName]}, {[r.CommentBody]}, CURRENT_TIMESTAMP, ""));
 		(detail (readError r.Parent))
 
 and mkCommentForm id =
@@ -66,7 +67,17 @@ and mkCommentForm id =
                     <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/><br/>
                     <submit value="Add Comment" action={handler}/></form></xml>
 
-and bentry row = 
+(*		
+		fun htmf s = 
+		(case String.split s #"\n" of 
+			  None => s :: Nil
+		     	| Some (h,t) => h :: htmf t)
+
+	in
+		<xml>Hello</xml>
+	end *)
+
+and bentry row =
 	count <- counter row.Blog.Id;
 	commentForm <- source 0;
 	return <xml>
@@ -82,7 +93,6 @@ and bentry row =
                          if v > 0 then return (mkCommentForm v) else return <xml/>}/></div>
                 </div>
                 </xml>
-
 and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
 		res <- bentry row;
 		com <- queryX (SELECT * FROM comment WHERE comment.Parent = {[id]})
@@ -91,7 +101,7 @@ and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user
         			        <div class={blogentrydetail}>
         			        <div class={blogentryauthor}>Posted by {[r.Comment.AuthorName]} at {[r.Comment.CommentCreated]}</div>
 				</div></xml>);
-		tr <- return <xml>{res}{com}</xml>;
+		tr <- return <xml>{res}<h3>Comments</h3>{com}</xml>;
 		p <- page row.Blog.Title tr;
 		return p
 
