@@ -5,6 +5,7 @@ table blog : { Id : int, Title : string, Body : string, Created : time, Public :
 	PRIMARY KEY Id,
   	CONSTRAINT Author FOREIGN KEY Author REFERENCES user(Id)
 
+sequence commentS
 table comment : { Id : int, Parent : int, CommentBody : string, CommentCreated : time, AuthorName : string, Key : string }
 	PRIMARY KEY Id,
 	CONSTRAINT Parent FOREIGN KEY Parent REFERENCES blog(Id)
@@ -53,18 +54,16 @@ fun page t c =
                 </body>
                 </xml> 
 
-and handler r = return <xml><body>
-  <table>
-    <tr> <th>Parent:</th> <td>{[r.Parent]}</td> </tr>
-    <tr> <th>Name:</th> <td>{[r.AuthorName]}</td> </tr>
-    <tr> <th>Comment:</th> <td>{[r.CommentBody]}</td> </tr>
-  </table>
-</body></xml>
+and handler r = 
+	    id <- nextval commentS;
+    		dml (INSERT INTO comment (Id, Parent, AuthorName, CommentBody, CommentCreated, Key)
+         	     VALUES ({[id]}, {[readError r.Parent]}, {[r.AuthorName]}, {[r.CommentBody]}, {[readError "10/10/10 10:10:10"]}, ""));
+		(detail (readError r.Parent))
 
 and mkCommentForm id =
 	<xml><form><hidden{#Parent} value={show id}/>
                     <p>Your Name:<br/></p><textbox{#AuthorName}/><br/>
-                    <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/>
+                    <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/><br/>
                     <submit value="Add Comment" action={handler}/></form></xml>
 
 and bentry row = 
@@ -87,11 +86,11 @@ and bentry row =
 and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
 		res <- bentry row;
 		com <- queryX (SELECT * FROM comment WHERE comment.Parent = {[id]})
-			(fn r => <xml><div class={blogentry}>
+			(fn r => <xml>
 			                <div class={blogentrybody}><p>{[r.Comment.CommentBody]}</p></div>
         			        <div class={blogentrydetail}>
         			        <div class={blogentryauthor}>Posted by {[r.Comment.AuthorName]} at {[r.Comment.CommentCreated]}</div>
-				</div></div></xml>);
+				</div></xml>);
 		tr <- return <xml>{res}{com}</xml>;
 		p <- page row.Blog.Title tr;
 		return p
