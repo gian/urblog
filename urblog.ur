@@ -37,7 +37,23 @@ val admin = editor
 fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
 		return r.N
 
-fun handler r = return <xml><body>
+val btitle = "Test Blog Title"
+
+fun page t c =
+		return <xml>
+                <head>
+                <title>{[t]} - {[btitle]}</title>
+                <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
+                </head>
+                <body>
+                <div class={blogcontent}>
+                <div class={blogtitle}><h1><a link={main ()}>{[btitle]}</a></h1></div>
+                {c}
+                </div>
+                </body>
+                </xml> 
+
+and handler r = return <xml><body>
   <table>
     <tr> <th>Parent:</th> <td>{[r.Parent]}</td> </tr>
     <tr> <th>Name:</th> <td>{[r.AuthorName]}</td> </tr>
@@ -45,48 +61,49 @@ fun handler r = return <xml><body>
   </table>
 </body></xml>
 
-fun mkCommentForm id =
-	return <xml><form><hidden{#Parent} value={show id}/>
+and mkCommentForm id =
+	<xml><form><hidden{#Parent} value={show id}/>
                     <p>Your Name:<br/></p><textbox{#AuthorName}/><br/>
                     <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/>
-                    <submit action={handler}/></form></xml>
+                    <submit value="Add Comment" action={handler}/></form></xml>
+
+and bentry row = 
+	count <- counter row.Blog.Id;
+	commentForm <- source 0;
+	return <xml>
+                <div class={blogentry}>
+                <div class={blogentrytitle}><h2><a link={detail row.Blog.Id}>{[row.Blog.Title]}</a></h2></div>
+                <div class={blogentrybody}><p>{[row.Blog.Body]}</p></div>
+                <div class={blogentrydetail}>
+                <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
+                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/></div>
+                </div>
+                <div class={commentform}>
+                        <dyn signal={v <- signal commentForm;
+                         if v > 0 then return (mkCommentForm v) else return <xml/>}/></div>
+                </div>
+                </xml>
+
+and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
+		res <- bentry row;
+		com <- queryX (SELECT * FROM comment WHERE comment.Parent = {[id]})
+			(fn r => <xml><div class={blogentry}>
+			                <div class={blogentrybody}><p>{[r.Comment.CommentBody]}</p></div>
+        			        <div class={blogentrydetail}>
+        			        <div class={blogentryauthor}>Posted by {[r.Comment.AuthorName]} at {[r.Comment.CommentCreated]}</div>
+				</div></div></xml>);
+		tr <- return <xml>{res}{com}</xml>;
+		p <- page row.Blog.Title tr;
+		return p
 
 (* This function should instantiate an 'Editor' form. *)
-fun listing () =
+and listing () = 
 	queryX' (SELECT * FROM blog, user WHERE blog.Author = user.Id ORDER BY blog.Id DESC)
-            (fn row => let
-		val par = row.Blog.Id
-		in
-		commentForm <- source 0;
-		count <- counter row.Blog.Id;
-		return <xml>
- 	       	<div class={blogentry}>
-       	 	<div class={blogentrytitle}><h2>{[row.Blog.Title]}</h2></div>
-        	<div class={blogentrybody}><p>{[row.Blog.Body]}</p></div>
-        	<div class={blogentrydetail}>
-        	<div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
-        	<div class={blogentrycomments}>{[count]} Comments | <button value="Add Comment" class={commentbutton} onclick={set commentForm par}/></div>
-        	</div>
-		<div class={commentform}>
-			<dyn signal={v <- signal commentForm; 
-			 if v > 0 then (mkCommentForm v) else return <xml/>}/></div>
-        	</div>
-        	</xml> end)
+            (fn row => bentry row)
        
-fun main () = 
+and main () = 
 	listn <- listing ();
-	 return
-		<xml>
-                <head>
-                <title>Some Blog Title</title>
-                <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
-                </head>
-                <body>
-                <div class={blogcontent}>
-                <div class={blogtitle}><h1>Some Blog Title</h1></div>
-                {listn}
-                </div>
-                </body>
-                </xml> 
+	p <- page btitle listn;
+	return p
 
 
