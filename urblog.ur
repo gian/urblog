@@ -73,6 +73,12 @@ and nl2list s =
     None => s :: Nil
   | Some (h,t) => h :: nl2list t
 
+and isAuthed () = True
+
+and bedit n = return <xml><body>{[n]}</body></xml>
+
+and	editLink n = (if isAuthed() = True then <xml>| <a link={bedit n}>Edit</a></xml> else <xml/>)
+
 and bentry row =
 	count <- counter row.Blog.Id;
 	commentForm <- source 0;
@@ -82,7 +88,7 @@ and bentry row =
                 <div class={blogentrybody}><p>{List.mapX (fn x => <xml><p>{[x]}</p></xml>) (nl2list row.Blog.Body)}</p></div>
                 <div class={blogentrydetail}>
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
-                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/></div>
+                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{editLink row.Blog.Id}</div>
                 </div>
                 <div class={commentform}>
                         <dyn signal={v <- signal commentForm;
