@@ -4,6 +4,6 @@ Ur/Web wishlist
 
 * a 'bless_html' function, that takes a string, and checks that it is valid, and then returns the result of parsing the XML/HTML contained within that string.
 
+* When getting column names wrong, error messages are pretty unhelpful.
 
-
-
+* md5 or sha1 function, defined at least on strings (but preferably over all types!)

@@ -109,12 +109,15 @@ and account () =
 	pg' <- page "Account Settings" pg;
 	return pg'
 
-and login r = return <xml><body><p>Username: {[r.Username]}</p>
-								<p>Password: {[r.Password]}</p></body></xml>
+and login r = 
+	re' <- oneOrNoRows(SELECT user.Id, user.Username, user.Password FROM user WHERE user.Username = {[r.U]} AND user.Password = {[r.P]});
+	case re' of
+		None => error <xml>Invalid Login</xml>
+	  | Some re => setCookie usersession (re.User.Id, re.User.Password); return <xml><body>User: {[re.User.Username]} = {[re.User.Password]}</body></xml>
 
 and loginForm () =
-	 return <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#Username}/><br/>
-	                   Password:<br/><password{#Password}/><br/>
+	 return <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
+	                   Password:<br/><password{#P}/><br/>
 					   <submit action={login}/></form></div></xml>
 
 and handler r = 
