@@ -70,7 +70,10 @@ body {
 	border-color: #696 #363 #363 #696; 
 } 
 
-.Urblog_accountdetails {
+.Urblog_accountlinks {
+	top: 5px;
+	right: 10px;
+	position: absolute;
 	float: right;
 }
 

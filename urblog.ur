@@ -10,6 +10,8 @@ table comment : { Id : int, Parent : int, CommentBody : string, CommentCreated :
 	PRIMARY KEY Id,
 	CONSTRAINT Parent FOREIGN KEY Parent REFERENCES blog(Id)
 
+cookie usersession : int * string
+
 style blogentry
 style blogentrytitle
 style blogentrydetail
@@ -88,11 +90,21 @@ and nl2list s =
 
 and isAuthed () = True
 
-and accountLink n = (if isAuthed() = True then <xml><a link={account()}>Account</a> | <a link={logout()}>Logout</a></xml> else <xml><a link={login()}>Login</a></xml>)
+and isAuthed' () = False
+	(*cval <- getCookie usersession;
+	(case cval of None => False
+				   | Some (uid,pwd) =>
+				   (case oneOrNoRows (SELECT * FROM user WHERE Id = {[uid]} AND Password = {[pwd]}) of
+		 				None => False
+					  | Some ux => True))*)
+
+and accountLink n = 
+	(if isAuthed () then <xml><a link={account()}>Account</a> | <a link={logout()}>Logout</a></xml> else <xml><a link={login()}>Login</a></xml>)
 
 and bedit n = return <xml><body>{[n]}</body></xml>
 
-and	editLink n = (if isAuthed() = True then <xml>| <a link={bedit n}>Edit</a></xml> else <xml/>)
+and	editLink n = 
+	(if isAuthed () then <xml> | <a link={bedit n}>Edit</a></xml> else <xml/>)
 
 and bentry row =
 	count <- counter row.Blog.Id;
