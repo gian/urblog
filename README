@@ -1,0 +1,9 @@
+Ur/Web wishlist
+
+* something that returns the current time as a value of type 'time'.
+
+* a 'bless_html' function, that takes a string, and checks that it is valid, and then returns the result of parsing the XML/HTML contained within that string.
+
+
+
+
