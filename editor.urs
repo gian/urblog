@@ -24,7 +24,13 @@ functor Make(M : sig
                  val title : string
 		
                  val cols : colsMeta cols
+
+				 val blogentry : css_class
+				 val blogentrytitle : css_class
+
+				 val page : string -> xbody -> transaction page
              end) : sig
     val editor : unit -> transaction page
+    val upd : int -> transaction page
 
 end

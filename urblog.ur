@@ -23,26 +23,70 @@ style blogtitle
 style commentform
 style commentbutton
 style accountlinks
-
-open Editor.Make(struct
-	val tab = blog
-                          
-	val title = "Blog Administration"
-	
-	val cols = {Title = Editor.string "Title",
-                    Body = Editor.string "Body",
-                    Created = Editor.time "Created",
-                    Public = Editor.bool "Public",
-		    Author = Editor.int "Author"}
-        end)
-
-val admin = editor
+style bodyedit
+style commentbox
 
 fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
 		return r.N
 
  
 val btitle = "Test Blog Title"
+
+structure Admin = Editor.Make(struct
+	val tab = blog
+                          
+	val title = "Blog Administration"
+	
+	val cols = {Title = Editor.string "Title",
+                Body = {Nam = "Entry Body",
+                          Show = (fn b => <xml>{[if strlen b > 25 then substring b 0 25 else b]}...</xml>),
+                          Widget = (fn [nm :: Name] => <xml>
+                                          <textarea{nm} class={bodyedit}/>
+                                        </xml>),
+                          WidgetPopulated = (fn [nm :: Name] b => <xml>
+                                          <textarea{nm} class={bodyedit}>{[b]}</textarea>
+                                        </xml>),
+                          Parse = (fn s => readError s),
+                          Inject = _
+                        },
+				Created = Editor.time "Entry Date",
+				Public = Editor.bool "Public?",
+				Author = {Nam = "",
+                          Show = (fn b => <xml/>),
+                          Widget = (fn [nm :: Name] => <xml>
+                                          <hidden{nm} value={show 1}/>
+                                        </xml>),
+                          WidgetPopulated = (fn [nm :: Name] b => <xml>
+                                          <hidden{nm} value={show b}/>
+                                        </xml>),
+                          Parse = (fn s => readError s),
+                          Inject = _
+                        }, 
+                }
+
+	val page = fn t c =>
+		return <xml>
+                <head>
+                <title>{[t]} - {[btitle]}</title>
+                <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
+                </head>
+                <body>
+				<div class={accountlinks}>Account Links</div>
+                <div class={blogcontent}>
+                <div class={blogtitle}><h1>{[btitle]}</h1></div>
+                {c}
+                </div>
+                </body>
+                </xml> 
+
+
+
+	val blogentrytitle = blogentrytitle
+	val blogentry = blogentry
+
+        end)
+
+val admin = Admin.editor
 
 fun page t c =
 		return <xml>
@@ -51,19 +95,13 @@ fun page t c =
                 <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
                 </head>
                 <body>
-				<div class={accountlinks}>{accountLink()}</div>
+				<div class={accountlinks}>Account Links</div>
                 <div class={blogcontent}>
                 <div class={blogtitle}><h1><a link={main ()}>{[btitle]}</a></h1></div>
                 {c}
                 </div>
                 </body>
                 </xml> 
-
-and login () = 
-	return <xml><body><h1>Login</h1></body></xml>
-
-and logout () =
-	return <xml><body><h1>Logout</h1></body></xml>
 
 and account () =
 	pg <- return <xml><h1>Account Settings</h1></xml>;
@@ -79,7 +117,7 @@ and handler r =
 and mkCommentForm id s =
 	<xml><form><hidden{#Parent} value={show id}/>
                     <p>Your Name:<br/></p><textbox{#AuthorName}/><br/>
-                    <p>Your Comment:<br/></p><textarea{#CommentBody}/><br/><br/>
+                    <p>Your Comment:<br/></p><textarea{#CommentBody} class={commentbox}/><br/><br/>
                     <submit value="Add Comment" action={handler}/>
 		    <button value="Cancel" onclick={set s 0}/></form></xml>
 
@@ -90,21 +128,10 @@ and nl2list s =
 
 and isAuthed () = True
 
-and isAuthed' () = False
-	(*cval <- getCookie usersession;
-	(case cval of None => False
-				   | Some (uid,pwd) =>
-				   (case oneOrNoRows (SELECT * FROM user WHERE Id = {[uid]} AND Password = {[pwd]}) of
-		 				None => False
-					  | Some ux => True))*)
+and currentUser () = 1
 
-and accountLink n = 
-	(if isAuthed () then <xml><a link={account()}>Account</a> | <a link={logout()}>Logout</a></xml> else <xml><a link={login()}>Login</a></xml>)
-
-and bedit n = return <xml><body>{[n]}</body></xml>
-
-and	editLink n = 
-	(if isAuthed () then <xml> | <a link={bedit n}>Edit</a></xml> else <xml/>)
+and editLink n =
+(if isAuthed () then <xml> | <a link={Admin.upd n}>Edit</a></xml> else <xml/>)
 
 and bentry row =
 	count <- counter row.Blog.Id;
@@ -143,5 +170,6 @@ and main () =
 	listn <- listing ();
 	p <- page btitle listn;
 	return p
+
 
 

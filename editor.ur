@@ -8,13 +8,15 @@ con colMeta = fn t_formT :: (Type * Type) => {
                  }
 con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
 
+style editordefault
+
 fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
     {Nam = name,
      Show = txt,
-     Widget = fn [nm :: Name] => <xml><textbox{nm}/></xml>,
+     Widget = fn [nm :: Name] => <xml><textbox{nm} class={editordefault}/></xml>,
      WidgetPopulated = fn [nm :: Name] n =>
-                          <xml><textbox{nm} value={show n}/></xml>,
+                          <xml><textbox{nm} value={show n} class={editordefault}/></xml>,
      Parse = readError,
      Inject = _}
 
@@ -41,9 +43,15 @@ functor Make(M : sig
                  val title : string
 
                  val cols : colsMeta cols
+
+				 val blogentry : css_class
+				 val blogentrytitle : css_class
+
+				 val page : string -> xbody -> transaction page
              end) = struct
 
     val tab = M.tab
+	val page = M.page
 
     sequence seq
 
@@ -65,6 +73,24 @@ functor Make(M : sig
                          </tr>
                        </xml>);
         return <xml>
+		 <div class={M.blogentry}>
+		 <div class={M.blogentrytitle}><h2>New Entry</h2></div><br/>
+		  <form>
+            {foldR [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
+                   (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
+                                    [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map snd rest)) => <xml>
+                                      {cdata col.Nam}<br/>{col.Widget [nm]}<br />
+                                      {useMore acc}
+                                    </xml>)
+                     <xml/>
+                     [M.cols] M.fl M.cols}
+            
+            <submit value="Post Entry" action={create}/>
+          </form>
+		  </div>
+		  <br/><hr/><br/>
+		  <div class={M.blogentry}>
+<div class={M.blogentrytitle}><h2>Entries</h2></div><br/>
           <table border={1}>
             <tr>
               <th>ID</th>
@@ -77,21 +103,8 @@ functor Make(M : sig
             </tr>
             {rows}
           </table>
-
-          <br/><hr/><br/>
-
-          <form>
-            {foldR [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
-                   (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
-                                    [[nm] ~ rest] (col : colMeta t) (acc : xml form [] (map snd rest)) => <xml>
-                                      <li> {cdata col.Nam}: {col.Widget [nm]}</li>
-                                      {useMore acc}
-                                    </xml>)
-                     <xml/>
-                     [M.cols] M.fl M.cols}
-            
-            <submit action={create}/>
-          </form>
+		  </div>
+          
         </xml>
 
     and create (inputs : $(map snd M.cols)) =
@@ -106,11 +119,11 @@ functor Make(M : sig
                             {} [M.cols] M.fl inputs M.cols
                      ++ {Id = (SQL {[id]})}));
         ls <- list ();
-        return <xml><body>
+       page "Entry Created" <xml>
           <p>Inserted with ID {[id]}.</p>
 
           {ls}
-        </body></xml>
+        </xml>
 
     and upd (id : int) =
         let
@@ -128,29 +141,32 @@ functor Make(M : sig
                                     {} [M.cols] M.fl inputs M.cols)
                             tab (WHERE T.Id = {[id]}));
                 ls <- list ();
-                return <xml><body>
+                page "Entry Saved" <xml>
                   <p>Saved!</p>
 
                   {ls}
-                </body></xml>
+                </xml>
         in
             fso <- oneOrNoRows (SELECT tab.{{map fst M.cols}} FROM tab WHERE tab.Id = {[id]});
             case fso : (Basis.option {Tab : $(map fst M.cols)}) of
-                None => return <xml><body>Not found!</body></xml>
-              | Some fs => return <xml><body><form>
+                None => page "Not Found!" <xml>Not found!</xml>
+              | Some fs => page "Edit Entry" <xml>
+			  <div class={M.blogentry}>
+			  <div class={M.blogentrytitle}><h2>Edit Entry</h2></div><br/>
+			  <form>
                 {foldR2 [fst] [colMeta] [fn cols :: {(Type * Type)} => xml form [] (map snd cols)]
                         (fn [nm :: Name] [t :: (Type * Type)] [rest :: {(Type * Type)}]
                                          [[nm] ~ rest] (v : t.1) (col : colMeta t)
                                          (acc : xml form [] (map snd rest)) =>
                             <xml>
-                              <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
+                              {cdata col.Nam}<br/>{col.WidgetPopulated [nm] v}<br />
                               {useMore acc}
                             </xml>)
                         <xml/>
                         [M.cols] M.fl fs.Tab M.cols}
 
                 <submit action={save}/>
-              </form></body></xml>
+              </form></div></xml>
         end
 
     and confirm (id : int) =
@@ -158,26 +174,22 @@ functor Make(M : sig
             fun delete () =
                 dml (DELETE FROM tab WHERE Id = {[id]});
                 ls <- list ();
-                return <xml><body>
-                  <p>The deed is done.</p>
-                  
+                page "Entry Deleted" <xml>
+                  <p>Entry Deleted.</p>
                   {ls}
-                </body></xml>
+                </xml>
         in
-            return <xml><body>
+            page "Confirm Entry Deletion" <xml>
               <p>Are you sure you want to delete ID #{[id]}?</p>
               
               <form><submit action={delete} value="I was born sure!"/></form>
-            </body></xml>
+            </xml>
         end    
 
     and editor () =
         ls <- list ();
-        return <xml><body>
-	 <div>
-          <h2>{cdata M.title}</h2>
+        page "Blog Administration" <xml>
           {ls}
-	</div></body>
         </xml>
 
 end
