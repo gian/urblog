@@ -25,6 +25,7 @@ style commentbutton
 style accountlinks
 style bodyedit
 style commentbox
+style loginbox
 
 fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
 		return r.N
@@ -108,6 +109,14 @@ and account () =
 	pg' <- page "Account Settings" pg;
 	return pg'
 
+and login r = return <xml><body><p>Username: {[r.Username]}</p>
+								<p>Password: {[r.Password]}</p></body></xml>
+
+and loginForm () =
+	 return <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#Username}/><br/>
+	                   Password:<br/><password{#Password}/><br/>
+					   <submit action={login}/></form></div></xml>
+
 and handler r = 
 	    id <- nextval commentS;
     		dml (INSERT INTO comment (Id, Parent, AuthorName, CommentBody, CommentCreated, Key)
@@ -168,8 +177,8 @@ and listing () =
        
 and main () = 
 	listn <- listing ();
-	p <- page btitle listn;
-	return p
+	lo <- loginForm ();
+	page btitle <xml>{listn} {lo}</xml>
 
 
 

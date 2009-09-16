@@ -91,3 +91,21 @@ body {
 	width: 330px;
 }
 
+.Urblog_loginbox {
+	position: absolute;
+	float: right;
+	right: 10px;
+	top: 5px;
+	padding: 24px;
+	background-color: white;
+	border-color: black;
+	border-width: 1px;
+	border-style: solid;
+	font-size: 10px;
+}
+
+.Urblog_loginbox input {
+	 font-family: 9px  Arial, Helvetica, clean, sans-serif;
+	 width: 100px;
+}
+
