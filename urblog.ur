@@ -20,6 +20,7 @@ style blogcontent
 style blogtitle
 style commentform
 style commentbutton
+style accountlinks
 
 open Editor.Make(struct
 	val tab = blog
@@ -48,12 +49,24 @@ fun page t c =
                 <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
                 </head>
                 <body>
+				<div class={accountlinks}>{accountLink()}</div>
                 <div class={blogcontent}>
                 <div class={blogtitle}><h1><a link={main ()}>{[btitle]}</a></h1></div>
                 {c}
                 </div>
                 </body>
                 </xml> 
+
+and login () = 
+	return <xml><body><h1>Login</h1></body></xml>
+
+and logout () =
+	return <xml><body><h1>Logout</h1></body></xml>
+
+and account () =
+	pg <- return <xml><h1>Account Settings</h1></xml>;
+	pg' <- page "Account Settings" pg;
+	return pg'
 
 and handler r = 
 	    id <- nextval commentS;
@@ -75,6 +88,8 @@ and nl2list s =
 
 and isAuthed () = True
 
+and accountLink n = (if isAuthed() = True then <xml><a link={account()}>Account</a> | <a link={logout()}>Logout</a></xml> else <xml><a link={login()}>Login</a></xml>)
+
 and bedit n = return <xml><body>{[n]}</body></xml>
 
 and	editLink n = (if isAuthed() = True then <xml>| <a link={bedit n}>Edit</a></xml> else <xml/>)
@@ -85,7 +100,7 @@ and bentry row =
 	return <xml>
                 <div class={blogentry}>
                 <div class={blogentrytitle}><h2><a link={detail row.Blog.Id}>{[row.Blog.Title]}</a></h2></div>
-                <div class={blogentrybody}><p>{List.mapX (fn x => <xml><p>{[x]}</p></xml>) (nl2list row.Blog.Body)}</p></div>
+                <div class={blogentrybody}>{List.mapX (fn x => <xml><p>{[x]}</p></xml>) (nl2list row.Blog.Body)}</div>
                 <div class={blogentrydetail}>
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
                 <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{editLink row.Blog.Id}</div>

@@ -69,3 +69,8 @@ body {
 	border:1px solid; 
 	border-color: #696 #363 #363 #696; 
 } 
+
+.Urblog_accountdetails {
+	float: right;
+}
+
