@@ -27,12 +27,35 @@ style bodyedit
 style commentbox
 style loginbox
 
-fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
-		return r.N
-
- 
 val btitle = "Test Blog Title"
 
+datatype formatting =
+	  Italics of string
+	| Bold of string
+	| Image of string
+	| Text of string
+	| Para of string
+
+fun tokens s =
+	let
+		(* Work around a compiler bug that prevents passing type constructors around as values *)
+		fun cm c z = let
+			val x = case z of Italics p => p
+			                | Bold p => p
+							| Image p => p
+							| Text p => p
+							| Para p => p
+
+			val (a,b) = case (String.split x c) of None => (x,"") | Some m => m
+			val (kw,r) = case (String.split b c) of None => (b,"") | Some m => m 
+		in
+			if x = "" then Nil else (Text a) :: (Para kw) :: cm c (Text r)
+		end
+	in
+		cm #"_" (Text s)
+	end
+
+  			
 structure Admin = Editor.Make(struct
 	val tab = blog
                           
@@ -72,7 +95,6 @@ structure Admin = Editor.Make(struct
                 <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
                 </head>
                 <body>
-				<div class={accountlinks}>Account Links</div>
                 <div class={blogcontent}>
                 <div class={blogtitle}><h1>{[btitle]}</h1></div>
                 {c}
@@ -89,14 +111,18 @@ structure Admin = Editor.Make(struct
 
 val admin = Admin.editor
 
+fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.Parent = {[id]});
+		return r.N
+
 fun page t c =
+		aLinks <- ifAuthed <xml><a link={Admin.editor()}>New Entry</a> | <a link={logout()}>Logout</a></xml> <xml/>;
 		return <xml>
                 <head>
                 <title>{[t]} - {[btitle]}</title>
                 <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
                 </head>
                 <body>
-				<div class={accountlinks}>Account Links</div>
+				<div class={accountlinks}>{aLinks}</div>
                 <div class={blogcontent}>
                 <div class={blogtitle}><h1><a link={main ()}>{[btitle]}</a></h1></div>
                 {c}
@@ -109,16 +135,19 @@ and account () =
 	pg' <- page "Account Settings" pg;
 	return pg'
 
+and logout () = setCookie usersession (0, "");
+				main()
+
 and login r = 
 	re' <- oneOrNoRows(SELECT user.Id, user.Username, user.Password FROM user WHERE user.Username = {[r.U]} AND user.Password = {[r.P]});
 	case re' of
 		None => error <xml>Invalid Login</xml>
-	  | Some re => setCookie usersession (re.User.Id, re.User.Password); return <xml><body>User: {[re.User.Username]} = {[re.User.Password]}</body></xml>
+	  | Some re => setCookie usersession (re.User.Id, re.User.Password); main ()
 
 and loginForm () =
-	 return <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
+	 ifAuthed <xml/> <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
 	                   Password:<br/><password{#P}/><br/>
-					   <submit action={login}/></form></div></xml>
+					   <submit value="Login" action={login}/></form></div></xml>
 
 and handler r = 
 	    id <- nextval commentS;
@@ -138,23 +167,34 @@ and nl2list s =
     None => s :: Nil
   | Some (h,t) => h :: nl2list t
 
-and isAuthed () = True
+and ifAuthed tC fC = 
+	us <- getCookie usersession;
+	case us of 
+			None => return fC
+	  	  | (Some (i,p)) => (
+		  		l <- oneOrNoRows (SELECT * FROM user WHERE user.Id = {[i]} AND user.Password = {[p]});
+				case l of None => return fC
+				        | Some x => return tC)
 
 and currentUser () = 1
 
-and editLink n =
-(if isAuthed () then <xml> | <a link={Admin.upd n}>Edit</a></xml> else <xml/>)
+and editLink n = ifAuthed <xml> | <a link={Admin.upd n}>Edit</a></xml> <xml/>
 
 and bentry row =
 	count <- counter row.Blog.Id;
 	commentForm <- source 0;
+	eL <- editLink row.Blog.Id;
 	return <xml>
                 <div class={blogentry}>
                 <div class={blogentrytitle}><h2><a link={detail row.Blog.Id}>{[row.Blog.Title]}</a></h2></div>
-                <div class={blogentrybody}>{List.mapX (fn x => <xml><p>{[x]}</p></xml>) (nl2list row.Blog.Body)}</div>
+                <div class={blogentrybody}>{List.mapX (fn x => case x of (Italics m) => <xml><i>{[m]}</i></xml>
+																	   | (Text m) => <xml>{[m]}</xml>
+																	   | (Para m) => <xml><p>{[m]}</p></xml>
+																	   | _ => <xml>Invalid blog markup</xml>
+											) (tokens row.Blog.Body)}</div>
                 <div class={blogentrydetail}>
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
-                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{editLink row.Blog.Id}</div>
+                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{eL}</div>
                 </div>
                 <div class={commentform}>
                         <dyn signal={v <- signal commentForm;
