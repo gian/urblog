@@ -27,36 +27,93 @@ style bodyedit
 style commentbox
 style loginbox
 
-val btitle = "Test Blog Title"
+val btitle = "Test Urblog Blog"
+
+(* Blog Markup:
+	text ::= (letters, numbers, whitespace)
+	frag ::= <text> 
+	frag ::= <text> <newline> <newline>
+	frag ::= [b] <text> [/b]
+	frag ::= [i] <text> [/i]
+	frag ::= [img] <text> [/img]
+	doc ::= <frag>*
+*)
+
 
 datatype formatting =
-	  Italics of string
-	| Bold of string
-	| Image of string
+	  Italics of formatting
+	| Bold of formatting
+	| Image of string 
 	| Text of string
-	| Para of string
+	| Para of list formatting 
 
-fun tokens s =
-	let
-		(* Work around a compiler bug that prevents passing type constructors around as values *)
-		fun cm c z = let
-			val x = case z of Italics p => p
-			                | Bold p => p
-							| Image p => p
-							| Text p => p
-							| Para p => p
+fun parseMarkup s =
+let
+	fun match s t = if strlen s < strlen t then False else (String.substring s {Start=0, Len=strlen t}) = t
 
-			val (a,b) = case (String.split x c) of None => (x,"") | Some m => m
-			val (kw,r) = case (String.split b c) of None => (b,"") | Some m => m 
+	fun consume s t = 
+		if match s t then String.substring s {Start=strlen t, Len=(strlen s - strlen t)} else "(ERROR)" 
+  		
+	fun frst s = strsub s 0
+
+	fun rest s = String.substring s {Start = 1, Len=(strlen s) - 1}
+
+	fun text s l = if s = "" || frst s = #"[" || frst s = #"\n" then l else text (rest s) (l ^ (show (frst s)))
+
+	fun frag s = 
+		if s = "" then (Text "","") else
+		if match s "[b]" then 
+		let
+			val s' = consume s "[b]"
+			val t = text s' ""
+			val s'' = consume (consume s' t) "[/b]"
 		in
-			if x = "" then Nil else (Text a) :: (Para kw) :: cm c (Text r)
+			(Bold (Text t), s'')
+		end else
+		if match s "[i]" then 
+		let
+			val s' = consume s "[i]"
+			val t = text s' ""
+			val s'' = consume (consume s' t) "[/i]"
+		in
+			(Italics (Text t), s'')
+		end else
+		if match s "[img]" then 
+		let
+			val s' = consume s "[img]"
+			val t = text s' ""
+			val s'' = consume (consume s' t) "[/img]"
+		in
+			(Image t, s'')
+		end else
+		let
+			val t = text s ""
+		in
+			(Text t, consume s t)
 		end
-	in
-		cm #"_" (Text s)
-	end
+	
+	fun doc s l = 
+		if s = "" then (Para l) :: Nil else
+		if match s "\n\n" then (Para l) :: doc (consume s "\n\n") Nil 
+		else let
+			val (f,s') = frag s
+		in
+			doc s' (List.append l  (f :: Nil))
+		end
 
-  			
-structure Admin = Editor.Make(struct
+	fun toXML l = 
+		case l of (Italics v) => <xml><i>{toXML v}</i></xml>
+		        | (Bold v) => <xml><b>{toXML v}</b></xml>
+		        | (Image v) => <xml><img src={bless v}/></xml>
+			    | (Text t) => <xml>{cdata t}</xml>
+			    | Para l => <xml><p>{List.mapX (fn x => <xml>{toXML x}</xml>) l}</p></xml>
+		
+in
+	<xml>{List.mapX toXML (doc s Nil)}</xml>
+end
+
+structure Admin = Editor.Make(
+struct
 	val tab = blog
                           
 	val title = "Blog Administration"
@@ -107,7 +164,7 @@ structure Admin = Editor.Make(struct
 	val blogentrytitle = blogentrytitle
 	val blogentry = blogentry
 
-        end)
+end)
 
 val admin = Admin.editor
 
@@ -115,8 +172,8 @@ fun counter id = r <- oneRow (SELECT COUNT( * ) AS N FROM comment WHERE comment.
 		return r.N
 
 fun page t c =
-		aLinks <- ifAuthed <xml><a link={Admin.editor()}>New Entry</a> | <a link={logout()}>Logout</a></xml> <xml/>;
-		return <xml>
+	aLinks <- ifAuthed <xml><a link={Admin.editor()}>New Entry</a> | <a link={logout()}>Logout</a></xml> <xml/>;
+	return <xml>
                 <head>
                 <title>{[t]} - {[btitle]}</title>
                 <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
@@ -128,7 +185,7 @@ fun page t c =
                 {c}
                 </div>
                 </body>
-                </xml> 
+		   </xml> 
 
 and account () =
 	pg <- return <xml><h1>Account Settings</h1></xml>;
@@ -145,7 +202,7 @@ and login r =
 	  | Some re => setCookie usersession (re.User.Id, re.User.Password); main ()
 
 and loginForm () =
-	 ifAuthed <xml/> <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
+	ifAuthed <xml/> <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
 	                   Password:<br/><password{#P}/><br/>
 					   <submit value="Login" action={login}/></form></div></xml>
 
@@ -162,19 +219,14 @@ and mkCommentForm id s =
                     <submit value="Add Comment" action={handler}/>
 		    <button value="Cancel" onclick={set s 0}/></form></xml>
 
-and nl2list s =
-  case String.split s #"\n" of
-    None => s :: Nil
-  | Some (h,t) => h :: nl2list t
-
 and ifAuthed tC fC = 
 	us <- getCookie usersession;
 	case us of 
-			None => return fC
-	  	  | (Some (i,p)) => (
-		  		l <- oneOrNoRows (SELECT * FROM user WHERE user.Id = {[i]} AND user.Password = {[p]});
-				case l of None => return fC
-				        | Some x => return tC)
+		None => return fC
+	  | Some (i,p) => (
+	  		l <- oneOrNoRows (SELECT * FROM user WHERE user.Id = {[i]} AND user.Password = {[p]});
+			case l of None => return fC
+			        | Some x => return tC)
 
 and currentUser () = 1
 
@@ -187,33 +239,31 @@ and bentry row =
 	return <xml>
                 <div class={blogentry}>
                 <div class={blogentrytitle}><h2><a link={detail row.Blog.Id}>{[row.Blog.Title]}</a></h2></div>
-                <div class={blogentrybody}>{List.mapX (fn x => case x of (Italics m) => <xml><i>{[m]}</i></xml>
-																	   | (Text m) => <xml>{[m]}</xml>
-																	   | (Para m) => <xml><p>{[m]}</p></xml>
-																	   | _ => <xml>Invalid blog markup</xml>
-											) (tokens row.Blog.Body)}</div>
+                <div class={blogentrybody}>{parseMarkup row.Blog.Body}</div>
                 <div class={blogentrydetail}>
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
-                <div class={blogentrycomments}><a link={detail row.Blog.Id}>{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{eL}</div>
+                 <div class={blogentrycomments}>
+					<a link={detail row.Blog.Id}>
+						{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{eL}
+				 </div>
                 </div>
                 <div class={commentform}>
                         <dyn signal={v <- signal commentForm;
                          if v > 0 then return (mkCommentForm v commentForm) else return <xml/>}/></div>
                 </div>
                 </xml>
-and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
-		res <- bentry row;
-		com <- queryX (SELECT * FROM comment WHERE comment.Parent = {[id]})
-			(fn r => <xml>
-			                <div class={blogentrybody}><p>{[r.Comment.CommentBody]}</p></div>
-        			        <div class={blogentrydetail}>
-        			        <div class={blogentryauthor}>Posted by {[r.Comment.AuthorName]} at {[r.Comment.CommentCreated]}</div>
-				</div></xml>);
-		tr <- return <xml>{res}<h3>Comments</h3>{com}</xml>;
-		p <- page row.Blog.Title tr;
-		return p
 
-(* This function should instantiate an 'Editor' form. *)
+and detail id = row <- oneRow (SELECT * FROM blog, user WHERE blog.Author = user.Id AND blog.Id = {[id]});
+	res <- bentry row;
+	com <- queryX (SELECT * FROM comment WHERE comment.Parent = {[id]})
+			(fn r => <xml>
+				         <div class={blogentrybody}><p>{[r.Comment.CommentBody]}</p></div>
+        			     <div class={blogentrydetail}>
+        			       <div class={blogentryauthor}>Posted by {[r.Comment.AuthorName]} at {[r.Comment.CommentCreated]}</div>
+				         </div></xml>);
+	tr <- return <xml>{res}<h3>Comments</h3>{com}</xml>;
+	page row.Blog.Title tr
+
 and listing () = 
 	queryX' (SELECT * FROM blog, user WHERE blog.Author = user.Id ORDER BY blog.Id DESC)
             (fn row => bentry row)

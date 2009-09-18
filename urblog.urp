@@ -1,4 +1,5 @@
 allow url http://www.expdev.net/urblog/urblog.css
+allow url http://www.impredicative.com/ur/web.png
 database dbname=urblog
 sql urblog.sql
 
