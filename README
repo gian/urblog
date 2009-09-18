@@ -1,9 +1,66 @@
+Urblog
+
+This is a very basic blog system implemented in Ur/Web:
+
+http://www.impredicative.com/ur/
+
+It's probably not suitable for real-world use.
+
+In the simplest case, compiling could work like this:
+
+# urweb urblog
+
+You will need to import the generated urblog.sql file into your database to
+generate the appropriate tables.
+
+If you're actually serious about compiling this, you should probably read the
+Ur/Web documentation to figure out how using your particular database engine.
+
+The generated binary should be called 'urblog', and can be invoked with:
+
+# ./urblog
+
+Urblog can then be accessed using the URL:
+
+http://localhost:8080/Urblog/main
+
+There is a 'user' table, but in reality only one user is supported (User ID 1)
+creating this user account is left as an exercise to the reader.
+
+Upon logging in, you should be able to create, update and delete blog posts
+using the "New Entry" link in the top-left corner.
+
+There is simple blog markup, consisting of the following tags:
+
+Bold: [b]some text[/b]
+Italics: [i]some text[/i]
+Image: [img]http://www.example.org/example.jpg[/img]
+
+Paragraphs are formed by following some text with two newlines.
+
+The blog markup parser is pretty fragile.  Invalid markup will probably cause
+harm to people and property.
+
+This was essentially just a learning project, and an experiment in the
+use of Ur/Web, so I present here my collected wish list of Ur/Web features:
+
 Ur/Web wishlist
 
 * something that returns the current time as a value of type 'time'.
 
-* a 'bless_html' function, that takes a string, and checks that it is valid, and then returns the result of parsing the XML/HTML contained within that string.
+* a 'bless_xml' function, that takes a string containing XML,
+  checks that it is valid, and then returns the result of parsing
+  the XML/HTML contained within that string.
 
 * When getting column names wrong, error messages are pretty unhelpful.
+  Not sure if this is easy to detect, but at least seeing words to the effect
+  of "you might have got a column name wrong" would probably make it
+  considerably more user-friendly.
 
-* md5 or sha1 function, defined at least on strings (but preferably over all types!)
+* md5 or sha1 function, defined at least on strings (but preferably over all 
+  types!)
+
+* A 'log' or 'debug' function that allows me to do imperative IO at my own 
+  risk, which is dumped to stderr.
+
+
