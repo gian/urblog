@@ -3,8 +3,8 @@ allow url http://www.impredicative.com/ur/web.png
 database dbname=urblog
 sql urblog.sql
 
-option
-list
-string
+$/option
+$/list
+$/string
 editor
 urblog
