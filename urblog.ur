@@ -161,22 +161,6 @@ struct
                         }, 
                 }
 
-	val page = fn t c =>
-		return <xml>
-                <head>
-                <title>{[t]} - {[btitle]}</title>
-                <link rel="stylesheet" type="text/css" href="http://www.expdev.net/urblog/urblog.css"/>
-                </head>
-                <body>
-                <div class={blogcontent}>
-                <div class={blogtitle}><h1>{[btitle]}</h1></div>
-                {c}
-                </div>
-                </body>
-                </xml> 
-
-
-
 	val blogentrytitle = blogentrytitle
 	val blogentry = blogentry
 
@@ -208,14 +192,16 @@ and account () =
 	pg' <- page "Account Settings" pg;
 	return pg'
 
-and logout () = setCookie usersession (0, "");
+and logout () = setCookie usersession {Value = (0,""),
+                 		       Expires = None,
+                                       Secure = False};
 				main()
 
 and login r = 
 	re' <- oneOrNoRows(SELECT user.Id, user.Username, user.Password FROM user WHERE user.Username = {[r.U]} AND user.Password = {[r.P]});
 	case re' of
 		None => error <xml>Invalid Login</xml>
-	  | Some re => setCookie usersession (re.User.Id, re.User.Password); main ()
+	  | Some re => setCookie usersession {Value=(re.User.Id, re.User.Password),Expires=None,Secure=False}; main ()
 
 and loginForm () =
 	ifAuthed <xml/> <xml><div class={loginbox}><p><b>Login</b></p><form>Username:<br/><textbox{#U}/><br/>
@@ -228,12 +214,12 @@ and handler r =
          	     VALUES ({[id]}, {[readError r.Parent]}, {[r.AuthorName]}, {[r.CommentBody]}, CURRENT_TIMESTAMP, ""));
 		(detail (readError r.Parent))
 
-and mkCommentForm id s =
+and mkCommentForm (id:int) s =
 	<xml><form><hidden{#Parent} value={show id}/>
                     <p>Your Name:<br/></p><textbox{#AuthorName}/><br/>
                     <p>Your Comment:<br/></p><textarea{#CommentBody} class={commentbox}/><br/><br/>
                     <submit value="Add Comment" action={handler}/>
-		    <button value="Cancel" onclick={set s 0}/></form></xml>
+		    <button value="Cancel" onclick={fn _ => set s 0}/></form></xml>
 
 and ifAuthed tC fC = 
 	us <- getCookie usersession;
@@ -260,7 +246,7 @@ and bentry row =
                 <div class={blogentryauthor}>Posted by {[row.User.DisplayName]} at {[row.Blog.Created]}</div>
                  <div class={blogentrycomments}>
 					<a link={detail row.Blog.Id}>
-						{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={set commentForm row.Blog.Id}/>{eL}
+						{[count]} Comments</a> | <button value="Add Comment" class={commentbutton} onclick={fn _ => set commentForm row.Blog.Id}/>{eL}
 				 </div>
                 </div>
                 <div class={commentform}>

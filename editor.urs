@@ -1,11 +1,10 @@
-con colMeta = fn t_formT :: (Type * Type) =>
+con colMeta = fn (db :: Type, widget :: Type) =>
                  {Nam : string,
-                  Show : t_formT.1 -> xbody,
-                  Widget : nm :: Name -> xml form [] [nm = t_formT.2],
-                  WidgetPopulated : nm :: Name -> t_formT.1
-                                    -> xml form [] [nm = t_formT.2],
-                  Parse : t_formT.2 -> t_formT.1,
-                  Inject : sql_injectable t_formT.1}
+                  Show : db -> xbody,
+                  Widget : nm :: Name -> xml form [] [nm = widget],
+                  WidgetPopulated : nm :: Name -> db -> xml form [] [nm = widget],
+                  Parse : widget -> db,
+                  Inject : sql_injectable db}
 con colsMeta = fn cols :: {(Type * Type)} => $(map colMeta cols)
 
 val int : string -> colMeta (int, string)
@@ -22,15 +21,10 @@ functor Make(M : sig
                  table tab : ([Id = int] ++ map fst cols)
 
                  val title : string
-		
+
                  val cols : colsMeta cols
-
-				 val blogentry : css_class
-				 val blogentrytitle : css_class
-
-				 val page : string -> xbody -> transaction page
              end) : sig
-    val editor : unit -> transaction page
-    val upd : int -> transaction page
-
+	val editor : unit -> transaction page
+	val upd : int -> transaction page
 end
+
