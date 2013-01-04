@@ -1,3 +1,8 @@
+NOTE: This is not the right version to be using for most people.  
+Most people will instead want the (tested, working) code included with the Ur/Web tutorial at:
+http://expdev.net/urtutorial/
+or on GitHub at: https://github.com/gian/urtutorial
+
 Urblog
 
 This is a very basic blog system implemented in Ur/Web:
